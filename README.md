@@ -44,14 +44,6 @@ This is a small, end-to-end **AWS + computer vision** project: event-driven, ser
 
 ---
 
-## Who this is for
-
-- You want a **working demo** you can show in interviews (local tests + optional live AWS).
-- You care about **cloud-native plumbing** (S3 events, Lambda, DynamoDB, API Gateway), not only a model in a notebook.
-- You may later swap the heuristic detector for a trained CNN without rewriting the AWS side.
-
----
-
 ## Repo structure
 
 | Path | Purpose |
