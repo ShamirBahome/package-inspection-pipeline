@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Inspection Line</title>
+<style>
+  :root {
+    --belt: #1c1f26;
+    --belt-line: #2c313c;
+    --paper: #eae6dd;
+    --ok: #4f7a5c;
+    --flag: #b5502f;
+    --ink: #1c1f26;
+    --muted: #6b7280;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--belt);
+    color: var(--paper);
+    font-family: 'Courier New', ui-monospace, monospace;
+    min-height: 100vh;
+  }
+
+  header {
+    padding: 28px 32px 20px;
+    border-bottom: 2px dashed var(--belt-line);
+  }
+
+  header h1 {
+    margin: 0;
+    font-size: 22px;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+  }
+
+  header p {
+    margin: 6px 0 0;
+    color: #9aa0ac;
+    font-size: 13px;
+  }
+
+  .stats {
+    display: flex;
+    gap: 24px;
+    padding: 18px 32px;
+    border-bottom: 2px dashed var(--belt-line);
+    flex-wrap: wrap;
+  }
+
+  .stat {
+    min-width: 120px;
+  }
+
+  .stat .num {
+    font-size: 28px;
+    font-weight: 700;
+    line-height: 1;
+  }
+
+  .stat .label {
+    font-size: 11px;
+    color: #9aa0ac;
+    margin-top: 4px;
+  }
+
+  .stat.flagged .num { color: #e08a63; }
+  .stat.clear .num { color: #8fbf9f; }
+
+  main {
+    padding: 24px 32px 60px;
+  }
+
+  .lane-label {
+    font-size: 12px;
+    color: #9aa0ac;
+    margin-bottom: 12px;
+  }
+
+  .line {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .package {
+    background: var(--paper);
+    color: var(--ink);
+    padding: 14px 18px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    border-left: 6px solid var(--ok);
+    position: relative;
+  }
+
+  .package.flagged {
+    border-left-color: var(--flag);
+  }
+
+  .package .badge {
+    font-size: 11px;
+    font-weight: 700;
+    padding: 4px 8px;
+    letter-spacing: 0.03em;
+    white-space: nowrap;
+  }
+
+  .package.clear .badge { background: #dfeee3; color: var(--ok); }
+  .package.flagged .badge { background: #f4ddd3; color: var(--flag); }
+
+  .package .key {
+    flex: 1;
+    font-size: 13px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .package .reason {
+    font-size: 12px;
+    color: var(--muted);
+    flex: 2;
+  }
+
+  .package .time {
+    font-size: 11px;
+    color: var(--muted);
+    white-space: nowrap;
+  }
+
+  .package .confidence {
+    font-size: 12px;
+    font-weight: 700;
+    min-width: 42px;
+    text-align: right;
+  }
+
+  .empty-state {
+    color: #6b7280;
+    font-size: 13px;
+    padding: 40px 0;
+    text-align: center;
+    border: 1px dashed var(--belt-line);
+  }
+
+  .footer-note {
+    margin-top: 28px;
+    font-size: 11px;
+    color: #565c68;
+  }
+
+  code {
+    background: #11141a;
+    padding: 2px 5px;
+    color: #9aa0ac;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Inspection Line — Fulfillment Sector 4</h1>
+  <p id="status-line">Connecting to inspection feed…</p>
+</header>
+
+<div class="stats">
+  <div class="stat">
+    <div class="num" id="stat-total">—</div>
+    <div class="label">SCANNED (LAST 50)</div>
+  </div>
+  <div class="stat flagged">
+    <div class="num" id="stat-flagged">—</div>
+    <div class="label">FLAGGED</div>
+  </div>
+  <div class="stat clear">
+    <div class="num" id="stat-clear">—</div>
+    <div class="label">CLEARED</div>
+  </div>
+</div>
+
+<main>
+  <div class="lane-label">RECENT SCANS · newest first</div>
+  <div class="line" id="package-line">
+    <div class="empty-state">No scans yet — waiting for the first image to hit the pipeline.</div>
+  </div>
+  <div class="footer-note">
+    Polling <code id="endpoint-display">API_ENDPOINT</code> every 5s. Edit the <code>API_ENDPOINT</code>
+    constant at the top of the script to point at your own API Gateway URL.
+  </div>
+</main>
+
+<script>
+  // ---- CONFIG -------------------------------------------------------
+  // Replace with your real API Gateway invoke URL, e.g.:
+  // "https://abc123xyz.execute-api.us-east-1.amazonaws.com/inspections"
+  const API_ENDPOINT = "REPLACE_WITH_YOUR_API_GATEWAY_URL/inspections";
+  const POLL_INTERVAL_MS = 5000;
+  // --------------------------------------------------------------------
+
+  const statusLine = document.getElementById("status-line");
+  const packageLine = document.getElementById("package-line");
+  const endpointDisplay = document.getElementById("endpoint-display");
+  endpointDisplay.textContent = API_ENDPOINT;
+
+  // Demo data used automatically if the real API isn't reachable yet
+  // (e.g. you're previewing this file before deploying anything to AWS).
+  // This lets you show the dashboard working in an interview even before
+  // AWS is wired up, and it's obvious it's demo data via the status line.
+  const DEMO_ITEMS = [
+    { inspection_id: "demo-1", image_key: "incoming/box_0231.jpg", damaged: false, confidence: 0.96, reason: "surface and shape look regular", timestamp: new Date(Date.now() - 15000).toISOString() },
+    { inspection_id: "demo-2", image_key: "incoming/box_0230.jpg", damaged: true, confidence: 0.81, reason: "low contour solidity (0.62); high edge density (0.19)", timestamp: new Date(Date.now() - 60000).toISOString() },
+    { inspection_id: "demo-3", image_key: "incoming/box_0229.jpg", damaged: false, confidence: 0.99, reason: "surface and shape look regular", timestamp: new Date(Date.now() - 130000).toISOString() },
+  ];
+
+  function timeAgo(isoString) {
+    const seconds = Math.floor((Date.now() - new Date(isoString)) / 1000);
+    if (seconds < 60) return `${seconds}s ago`;
+    if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`;
+    return `${Math.floor(seconds / 3600)}h ago`;
+  }
+
+  function render(items, isDemo) {
+    const total = items.length;
+    const flagged = items.filter(i => i.damaged).length;
+
+    document.getElementById("stat-total").textContent = total;
+    document.getElementById("stat-flagged").textContent = flagged;
+    document.getElementById("stat-clear").textContent = total - flagged;
+
+    statusLine.textContent = isDemo
+      ? "Showing demo data — connect API_ENDPOINT to see live scans."
+      : `Live — last updated ${new Date().toLocaleTimeString()}`;
+
+    if (total === 0) {
+      packageLine.innerHTML = '<div class="empty-state">No scans yet — waiting for the first image to hit the pipeline.</div>';
+      return;
+    }
+
+    packageLine.innerHTML = items.map(item => {
+      const flaggedClass = item.damaged ? "flagged" : "clear";
+      const badgeText = item.damaged ? "FLAGGED" : "CLEAR";
+      const confidencePct = Math.round((item.confidence || 0) * 100);
+      return `
+        <div class="package ${flaggedClass}">
+          <span class="badge">${badgeText}</span>
+          <span class="key">${item.image_key}</span>
+          <span class="reason">${item.reason}</span>
+          <span class="confidence">${confidencePct}%</span>
+          <span class="time">${timeAgo(item.timestamp)}</span>
+        </div>`;
+    }).join("");
+  }
+
+  async function poll() {
+    try {
+      const res = await fetch(API_ENDPOINT);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      render(data.items || [], false);
+    } catch (err) {
+      // Falls back to demo data - keeps the dashboard demoable even
+      // before AWS is deployed, or if the API is temporarily unreachable.
+      render(DEMO_ITEMS, true);
+    }
+  }
+
+  poll();
+  setInterval(poll, POLL_INTERVAL_MS);
+</script>
+
+</body>
+</html>

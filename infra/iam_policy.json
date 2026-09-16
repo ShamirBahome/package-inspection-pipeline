@@ -1,0 +1,39 @@
+{
+  "_comment": "Attach this policy to the Lambda's execution role (not to your personal IAM user). It follows least-privilege: only the exact actions/resources the Lambda needs, nothing broader like s3:* or dynamodb:*.",
+
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "ReadUploadedImages",
+      "Effect": "Allow",
+      "Action": ["s3:GetObject"],
+      "Resource": "arn:aws:s3:::package-images-bucket/*"
+    },
+    {
+      "Sid": "WriteInspectionResults",
+      "Effect": "Allow",
+      "Action": ["dynamodb:PutItem"],
+      "Resource": "arn:aws:dynamodb:*:*:table/PackageInspections"
+    },
+    {
+      "Sid": "QueryInspectionResults",
+      "Effect": "Allow",
+      "Action": ["dynamodb:Query"],
+      "Resource": [
+        "arn:aws:dynamodb:*:*:table/PackageInspections",
+        "arn:aws:dynamodb:*:*:table/PackageInspections/index/*"
+      ]
+    },
+    {
+      "Sid": "WriteLambdaLogs",
+      "_comment": "Standard permissions every Lambda needs to write to CloudWatch Logs - without this you can't see print() output or errors.",
+      "Effect": "Allow",
+      "Action": [
+        "logs:CreateLogGroup",
+        "logs:CreateLogStream",
+        "logs:PutLogEvents"
+      ],
+      "Resource": "arn:aws:logs:*:*:*"
+    }
+  ]
+}
