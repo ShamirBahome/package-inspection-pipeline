@@ -1,6 +1,4 @@
 {
-  "_comment": "Attach this policy to the Lambda's execution role (not to your personal IAM user). It follows least-privilege: only the exact actions/resources the Lambda needs, nothing broader like s3:* or dynamodb:*.",
-
   "Version": "2012-10-17",
   "Statement": [
     {
@@ -26,7 +24,6 @@
     },
     {
       "Sid": "WriteLambdaLogs",
-      "_comment": "Standard permissions every Lambda needs to write to CloudWatch Logs - without this you can't see print() output or errors.",
       "Effect": "Allow",
       "Action": [
         "logs:CreateLogGroup",
