@@ -288,16 +288,6 @@ Later, train with `model/train_classifier.py` (ResNet18 transfer learning) and s
 
 ---
 
-## Design choices (interview talking points)
-
-- **Event-driven:** no polling; S3 object-created events invoke ingest.
-- **Serverless:** Lambda scales with uploads; DynamoDB on-demand billing when idle costs little.
-- **Least privilege:** separate ingest vs read functions; IAM limited to GetObject / PutItem / Query / logs.
-- **Operability:** failed images still write a DynamoDB row (`status: failed`) instead of disappearing.
-- **Demoable early:** classical CV + local mocks + dashboard demo mode before AWS is fully wired.
-
----
-
 ## Troubleshooting
 
 | Problem | What to check |
@@ -316,6 +306,4 @@ This design stays cheap for demos: S3 + Lambda + DynamoDB on-demand + API Gatewa
 
 ---
 
-## License
-
-MIT — use and modify freely for portfolio / learning.
+shamirhabome
